@@ -1,0 +1,7 @@
+{
+  "name": "Jeevix",
+  "description": "Digital Health Passport, Emergency SOS, and Blood Donation Network with Jeevix AI",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
