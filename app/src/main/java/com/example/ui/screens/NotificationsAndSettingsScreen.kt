@@ -21,17 +21,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bloodtype
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Emergency
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +45,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -68,12 +73,18 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.NotificationItem
 import com.example.data.model.PrivacySettings
 import com.example.data.model.UserProfile
+import com.example.ui.components.AiHealthAnalysisDialog
+import com.example.ui.components.EmailVerificationDialog
+import com.example.ui.components.GovtIdVerificationDialog
+import com.example.ui.components.LanguageSelectionDialog
+import com.example.ui.components.WearableDevicesDialog
 import com.example.ui.theme.JeevixAiViolet
 import com.example.ui.theme.JeevixCrimson
 import com.example.ui.theme.JeevixCrimsonDark
 import com.example.ui.theme.JeevixEmergencyRed
 import com.example.ui.theme.JeevixSuccess
 import com.example.ui.theme.JeevixTeal
+import com.example.ui.util.LocalizationManager
 import com.example.viewmodel.JeevixViewModel
 
 @Composable
@@ -184,13 +195,13 @@ fun NotificationsScreen(
     } else {
       LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
       ) {
         items(filteredNotifications, key = { it.id }) { notif ->
-          NotificationCardItem(
+          NotificationItemCard(
             item = notif,
-            onItemClick = { viewModel.markNotificationRead(notif.id) }
+            onDismiss = { viewModel.dismissNotification(notif.id) }
           )
         }
       }
@@ -199,91 +210,81 @@ fun NotificationsScreen(
 }
 
 @Composable
-fun NotificationCardItem(
+fun NotificationItemCard(
   item: NotificationItem,
-  onItemClick: () -> Unit
+  onDismiss: () -> Unit
 ) {
-  val typeColor = Color(item.urgencyColorHex)
+  val iconBg = when (item.type) {
+    "Emergency" -> JeevixEmergencyRed.copy(alpha = 0.15f)
+    "Blood" -> JeevixCrimson.copy(alpha = 0.15f)
+    else -> JeevixTeal.copy(alpha = 0.15f)
+  }
+
+  val iconColor = when (item.type) {
+    "Emergency" -> JeevixEmergencyRed
+    "Blood" -> JeevixCrimson
+    else -> JeevixTeal
+  }
 
   Card(
-    shape = RoundedCornerShape(16.dp),
+    shape = RoundedCornerShape(14.dp),
     colors = CardDefaults.cardColors(
-      containerColor = if (!item.isRead) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+      containerColor = if (item.isRead) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
     ),
-    border = androidx.compose.foundation.BorderStroke(
-      1.dp,
-      if (!item.isRead) typeColor.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-    ),
-    modifier = Modifier
-      .fillMaxWidth()
-      .clickable { onItemClick() }
+    border = if (!item.isRead) androidx.compose.foundation.BorderStroke(1.dp, JeevixCrimson.copy(alpha = 0.2f)) else null,
+    modifier = Modifier.fillMaxWidth()
   ) {
     Row(
       modifier = Modifier
         .fillMaxWidth()
         .padding(14.dp),
-      verticalAlignment = Alignment.Top
+      verticalAlignment = Alignment.CenterVertically
     ) {
       Box(
         modifier = Modifier
-          .size(38.dp)
+          .size(42.dp)
           .clip(CircleShape)
-          .background(typeColor.copy(alpha = 0.15f)),
+          .background(iconBg),
         contentAlignment = Alignment.Center
       ) {
         Icon(
           imageVector = when (item.type) {
             "Emergency" -> Icons.Default.Emergency
             "Blood" -> Icons.Default.WaterDrop
-            "Health" -> Icons.Default.Security
             else -> Icons.Default.Notifications
           },
           contentDescription = null,
-          tint = typeColor,
-          modifier = Modifier.size(20.dp)
+          tint = iconColor,
+          modifier = Modifier.size(22.dp)
         )
       }
 
       Spacer(modifier = Modifier.width(12.dp))
 
       Column(modifier = Modifier.weight(1f)) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Text(
-            text = item.title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = if (!item.isRead) FontWeight.Bold else FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-          )
-          if (!item.isRead) {
-            Box(
-              modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(JeevixCrimson)
-            )
-          }
-        }
-
-        Spacer(modifier = Modifier.height(2.dp))
-
+        Text(
+          text = item.title,
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurface
+        )
         Text(
           text = item.description,
           style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(top = 2.dp)
         )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
         Text(
           text = item.timeAgo,
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
-          fontSize = 10.sp
+          fontSize = 10.sp,
+          modifier = Modifier.padding(top = 4.dp)
         )
+      }
+
+      IconButton(onClick = onDismiss) {
+        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
       }
     }
   }
@@ -297,11 +298,60 @@ fun SettingsAndPrivacyScreen(
   val context = LocalContext.current
   val userProfile by viewModel.userProfile.collectAsState()
   val privacySettings by viewModel.privacySettings.collectAsState()
+  val showWearableDialog by viewModel.showWearableDialog.collectAsState()
+  val showAiHealthDialog by viewModel.showAiAnalysisDialog.collectAsState()
+  val showEmailDialog by viewModel.showEmailVerifyDialog.collectAsState()
+  val showIdDialog by viewModel.showIdVerifyDialog.collectAsState()
+  val showLanguageDialog by viewModel.showLanguageDialog.collectAsState()
+
+  val currentLang = userProfile?.selectedLanguage ?: "en"
 
   var shareBloodGroup by remember { mutableStateOf(privacySettings.shareBloodGroupWithRequesters) }
   var hideMedicalHistory by remember { mutableStateOf(privacySettings.hideMedicalHistoryFromPublic) }
   var sosGpsOnly by remember { mutableStateOf(privacySettings.allowGpsDuringSosOnly) }
   var allowAiPassport by remember { mutableStateOf(privacySettings.allowAiToReadPassport) }
+
+  // Dialogs
+  if (showWearableDialog) {
+    WearableDevicesDialog(
+      wearables = viewModel.getSupportedWearables(),
+      connectedDevice = userProfile?.connectedWearable,
+      onSyncDevice = { brand -> viewModel.syncWearableDevice(brand) },
+      onConnectDevice = { brand -> viewModel.syncWearableDevice(brand) },
+      onDismiss = { viewModel.showWearableDialog(false) }
+    )
+  }
+
+  if (showAiHealthDialog) {
+    AiHealthAnalysisDialog(
+      report = viewModel.getAiHealthReport(),
+      languageCode = currentLang,
+      onDismiss = { viewModel.showAiAnalysisDialog(false) }
+    )
+  }
+
+  if (showEmailDialog) {
+    EmailVerificationDialog(
+      currentEmail = userProfile?.email ?: "aanchalbb11@gmail.com",
+      onVerify = { email -> viewModel.verifyEmail(email) },
+      onDismiss = { viewModel.showEmailVerifyDialog(false) }
+    )
+  }
+
+  if (showIdDialog) {
+    GovtIdVerificationDialog(
+      onVerify = { idType, idNum -> viewModel.verifyGovtId(idType, idNum) },
+      onDismiss = { viewModel.showIdVerifyDialog(false) }
+    )
+  }
+
+  if (showLanguageDialog) {
+    LanguageSelectionDialog(
+      currentLanguage = currentLang,
+      onSelectLanguage = { lang -> viewModel.setLanguage(lang) },
+      onDismiss = { viewModel.showLanguageDialog(false) }
+    )
+  }
 
   LazyColumn(
     modifier = modifier
@@ -313,7 +363,7 @@ fun SettingsAndPrivacyScreen(
     // Header
     item {
       Text(
-        text = "Settings & Privacy Controls 🔒",
+        text = "Settings & Preferences 🔒",
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground
@@ -352,12 +402,18 @@ fun SettingsAndPrivacyScreen(
           Spacer(modifier = Modifier.width(14.dp))
 
           Column {
-            Text(
-              text = userProfile?.fullName ?: "Aanchal Sharma",
-              style = MaterialTheme.typography.titleMedium,
-              fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text(
+                text = userProfile?.fullName ?: "Aanchal Singh",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+              )
+              if (userProfile?.isIdVerified == true) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(Icons.Default.Verified, contentDescription = "Shield Verified", tint = Color(0xFF8B5CF6), modifier = Modifier.size(16.dp))
+              }
+            }
             Text(
               text = "Blood Group: ${userProfile?.bloodGroup ?: "O+"} • ID: ${userProfile?.jeevixId ?: "JVX-8942-O+"}",
               style = MaterialTheme.typography.bodySmall,
@@ -374,7 +430,146 @@ fun SettingsAndPrivacyScreen(
       }
     }
 
-    // SECTION 1: GRANULAR CONSENT AND PRIVACY
+    // SECTION: LANGUAGE & REGIONALIZATION
+    item {
+      Text(
+        text = "Language & Regionalization",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold
+      )
+    }
+
+    item {
+      Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .clickable { viewModel.showLanguageDialog(true) }
+            .padding(16.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Language, contentDescription = null, tint = JeevixTeal)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+              Text(
+                text = "App Language / भाषा / ભાષા",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+              )
+              Text(
+                text = if (currentLang == "hi") "हिन्दी (Hindi)" else if (currentLang == "gu") "ગુજરાતી (Gujarati)" else "English",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
+          }
+
+          Surface(shape = RoundedCornerShape(8.dp), color = JeevixTeal.copy(alpha = 0.12f)) {
+            Text(
+              text = "Change",
+              color = JeevixTeal,
+              style = MaterialTheme.typography.labelSmall,
+              fontWeight = FontWeight.Bold,
+              modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+          }
+        }
+      }
+    }
+
+    // SECTION: WEARABLE & AI REPORT SHORTCUTS
+    item {
+      Text(
+        text = "Wearable Health & AI Insights",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold
+      )
+    }
+
+    item {
+      Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+          // Wearable Row
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Icon(Icons.Default.Watch, contentDescription = null, tint = Color(0xFF0284C7))
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = "Smartwatch / Wearable Sync",
+                  style = MaterialTheme.typography.titleSmall,
+                  fontWeight = FontWeight.Bold
+                )
+                Text(
+                  text = if (userProfile?.connectedWearable != null) "Connected: ${userProfile?.connectedWearable} (Live Sync)" else "Connect Apple Watch / Fitbit",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+
+            OutlinedButton(
+              onClick = { viewModel.showWearableDialog(true) },
+              shape = RoundedCornerShape(8.dp)
+            ) {
+              Text("Sync", style = MaterialTheme.typography.labelSmall)
+            }
+          }
+
+          Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+          // AI Health Analysis Row
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = JeevixAiViolet)
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = "AI Health Passport Analysis",
+                  style = MaterialTheme.typography.titleSmall,
+                  fontWeight = FontWeight.Bold
+                )
+                Text(
+                  text = "Clinical risk detection & trends report",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+
+            Button(
+              onClick = { viewModel.showAiAnalysisDialog(true) },
+              colors = ButtonDefaults.buttonColors(containerColor = JeevixAiViolet),
+              shape = RoundedCornerShape(8.dp)
+            ) {
+              Text("Analyze", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
+          }
+        }
+      }
+    }
+
+    // SECTION: GRANULAR CONSENT AND PRIVACY
     item {
       Text(
         text = "Granular Data Sharing Controls",
@@ -445,7 +640,7 @@ fun SettingsAndPrivacyScreen(
       }
     }
 
-    // SECTION 2: EMERGENCY CARD EXPORT
+    // SECTION: EMERGENCY CARD EXPORT
     item {
       Text(
         text = "Offline Health Passport",
@@ -492,7 +687,7 @@ fun SettingsAndPrivacyScreen(
       }
     }
 
-    // SECTION 3: APP INFO
+    // SECTION: APP INFO
     item {
       Card(
         shape = RoundedCornerShape(18.dp),

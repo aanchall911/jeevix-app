@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,10 +74,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.BloodDonation
+import com.example.data.model.DonorRewardBadge
+import com.example.data.model.DonorRewards
 import com.example.data.model.EmergencyContact
 import com.example.data.model.MedicalRecord
 import com.example.data.model.UserProfile
 import com.example.ui.components.CanvasEmergencyQrCode
+import com.example.ui.components.DonorBadgeDetailDialog
+import com.example.ui.components.DonorMilestoneProgressCard
+import com.example.ui.components.DonorRewardBadgeChip
 import com.example.ui.components.HealthPassportDigitalCard
 import com.example.ui.theme.JeevixAiViolet
 import com.example.ui.theme.JeevixCrimson
@@ -254,6 +260,7 @@ fun HealthPassportScreen(
       )
       2 -> DonationHistoryTab(
         donations = donations,
+        rewards = viewModel.getDonorRewards(),
         onAddClick = { viewModel.showAddDonationDialog(true) }
       )
       3 -> EmergencyContactsTab(
@@ -574,13 +581,51 @@ fun MedicalRecordItemCard(
 @Composable
 fun DonationHistoryTab(
   donations: List<BloodDonation>,
+  rewards: DonorRewards,
   onAddClick: () -> Unit
 ) {
+  var selectedBadgeForDialog by remember { mutableStateOf<DonorRewardBadge?>(null) }
+
+  if (selectedBadgeForDialog != null) {
+    DonorBadgeDetailDialog(
+      badge = selectedBadgeForDialog!!,
+      onDismiss = { selectedBadgeForDialog = null }
+    )
+  }
+
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp)
   ) {
+    // 1. MILESTONE PROGRESS BAR CARD
+    item {
+      DonorMilestoneProgressCard(
+        rewards = rewards,
+        onBadgeClick = { selectedBadgeForDialog = it }
+      )
+    }
+
+    // 2. DYNAMIC BADGE CHIPS
+    item {
+      Column {
+        Text(
+          text = "Active Lifesaver Badges",
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          items(rewards.earnedBadges, key = { it.id }) { badge ->
+            DonorRewardBadgeChip(
+              badge = badge,
+              onClick = { selectedBadgeForDialog = badge }
+            )
+          }
+        }
+      }
+    }
+
     item {
       Row(
         modifier = Modifier.fillMaxWidth(),

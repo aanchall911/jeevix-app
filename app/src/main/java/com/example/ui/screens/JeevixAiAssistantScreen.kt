@@ -26,6 +26,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -54,11 +56,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ChatMessage
 import com.example.data.model.MessageSender
+import com.example.ui.components.LanguageSelectionDialog
 import com.example.ui.theme.JeevixAiIndigo
 import com.example.ui.theme.JeevixAiPink
 import com.example.ui.theme.JeevixAiViolet
 import com.example.ui.theme.JeevixCrimson
 import com.example.ui.theme.JeevixCrimsonDark
+import com.example.ui.theme.JeevixTeal
+import com.example.ui.util.LocalizationManager
 import com.example.viewmodel.JeevixViewModel
 
 @Composable
@@ -68,6 +73,11 @@ fun JeevixAiAssistantScreen(
   modifier: Modifier = Modifier
 ) {
   val chatMessages by viewModel.chatMessages.collectAsState()
+  val userProfile by viewModel.userProfile.collectAsState()
+  val showLanguageDialog by viewModel.showLanguageDialog.collectAsState()
+
+  val currentLang = userProfile?.selectedLanguage ?: "en"
+
   var inputQuery by remember { mutableStateOf(initialPrompt ?: "") }
   val listState = rememberLazyListState()
 
@@ -84,13 +94,35 @@ fun JeevixAiAssistantScreen(
     }
   }
 
-  val suggestedPrompts = listOf(
-    "Summarize my health profile",
-    "Show my donation history",
-    "What information is in my passport?",
-    "Tips to prepare for blood donation",
-    "What to do in a medical emergency?"
-  )
+  if (showLanguageDialog) {
+    LanguageSelectionDialog(
+      currentLanguage = currentLang,
+      onSelectLanguage = { lang -> viewModel.setLanguage(lang) },
+      onDismiss = { viewModel.showLanguageDialog(false) }
+    )
+  }
+
+  val suggestedPrompts = when (currentLang) {
+    "hi" -> listOf(
+      "मेरे स्वास्थ्य पासपोर्ट और ट्रेंड्स का विश्लेषण करें",
+      "क्या मैं आज रक्तदान करने के लिए योग्य हूँ?",
+      "मेरे वियरेबल वाइटल्स और एलर्जी की जांच करें",
+      "रक्तदान की तैयारी के लिए टिप्स बताएं"
+    )
+    "gu" -> listOf(
+      "મારા હેલ્થ પાસપોર્ટ અને ટ્રેન્ડ્સ તપાસો",
+      "શું હું આજે રક્તદાન માટે યોગ્ય છું?",
+      "મારા વિયરેબલ વાઇટલ્સ અને એલર્જી તપાસો",
+      "ઇમરજન્સીમાં શું કરવું?"
+    )
+    else -> listOf(
+      "Analyze my health passport trends & risks",
+      "Check my blood donation readiness",
+      "Summarize wearable vitals & allergies",
+      "Tips to prepare for blood donation",
+      "What to do in a medical emergency?"
+    )
+  }
 
   Column(
     modifier = modifier
@@ -104,48 +136,73 @@ fun JeevixAiAssistantScreen(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 20.dp, vertical = 12.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically
     ) {
-      Box(
-        modifier = Modifier
-          .size(42.dp)
-          .clip(CircleShape)
-          .background(Brush.linearGradient(listOf(JeevixAiViolet, JeevixAiPink))),
-        contentAlignment = Alignment.Center
-      ) {
-        Text(text = "✨", fontSize = 20.sp)
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+          modifier = Modifier
+            .size(42.dp)
+            .clip(CircleShape)
+            .background(Brush.linearGradient(listOf(JeevixAiViolet, JeevixAiPink))),
+          contentAlignment = Alignment.Center
+        ) {
+          Text(text = "✨", fontSize = 20.sp)
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+              text = LocalizationManager.get("jeevix_ai_assistant", currentLang),
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = JeevixAiViolet.copy(alpha = 0.15f)
+            ) {
+              Text(
+                text = "Passport-Grounded",
+                style = MaterialTheme.typography.labelSmall,
+                color = JeevixAiViolet,
+                fontWeight = FontWeight.Bold,
+                fontSize = 9.sp,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+              )
+            }
+          }
+          Text(
+            text = "Clinical intelligence grounded in your Health Passport",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        }
       }
 
-      Spacer(modifier = Modifier.width(12.dp))
-
-      Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+      // Language Switcher
+      Surface(
+        onClick = { viewModel.showLanguageDialog(true) },
+        shape = RoundedCornerShape(12.dp),
+        color = JeevixTeal.copy(alpha = 0.1f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, JeevixTeal.copy(alpha = 0.3f))
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Icon(Icons.Default.Language, contentDescription = null, tint = JeevixTeal, modifier = Modifier.size(14.dp))
+          Spacer(modifier = Modifier.width(4.dp))
           Text(
-            text = "Jeevix AI Assistant",
-            style = MaterialTheme.typography.titleMedium,
+            text = if (currentLang == "hi") "हिंदी" else if (currentLang == "gu") "ગુજરાતી" else "EN",
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = JeevixTeal
           )
-          Spacer(modifier = Modifier.width(6.dp))
-          Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = JeevixAiViolet.copy(alpha = 0.15f)
-          ) {
-            Text(
-              text = "Grounded",
-              style = MaterialTheme.typography.labelSmall,
-              color = JeevixAiViolet,
-              fontWeight = FontWeight.Bold,
-              fontSize = 9.sp,
-              modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-            )
-          }
         }
-        Text(
-          text = "Clinical intelligence connected to your Health Passport",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
       }
     }
 
@@ -194,13 +251,13 @@ fun JeevixAiAssistantScreen(
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 10.dp),
+        .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       OutlinedTextField(
         value = inputQuery,
         onValueChange = { inputQuery = it },
-        placeholder = { Text("Ask Jeevix AI anything about your health...") },
+        placeholder = { Text(LocalizationManager.get("ask_jeevix_ai", currentLang)) },
         modifier = Modifier.weight(1f),
         shape = RoundedCornerShape(20.dp),
         colors = OutlinedTextFieldDefaults.colors(
@@ -228,6 +285,28 @@ fun JeevixAiAssistantScreen(
           contentDescription = "Send",
           tint = Color.White,
           modifier = Modifier.size(20.dp)
+        )
+      }
+    }
+
+    // Medical Disclaimer Footer
+    Surface(
+      shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+      color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+      modifier = Modifier.fillMaxWidth()
+    ) {
+      Row(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(12.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+          text = LocalizationManager.get("ai_disclaimer", currentLang),
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          fontSize = 9.sp,
+          maxLines = 1
         )
       }
     }
@@ -277,7 +356,7 @@ fun ChatMessageBubble(message: ChatMessage) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Analyzing health passport...",
+              text = message.text,
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )

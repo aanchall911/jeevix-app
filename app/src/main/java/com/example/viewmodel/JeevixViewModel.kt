@@ -128,10 +128,118 @@ class JeevixViewModel(application: Application) : AndroidViewModel(application) 
   private val _showVitalsUpdateDialog = MutableStateFlow(false)
   val showVitalsUpdateDialog = _showVitalsUpdateDialog.asStateFlow()
 
+  // New Feature Dialog States
+  private val _showAiAnalysisDialog = MutableStateFlow(false)
+  val showAiAnalysisDialog = _showAiAnalysisDialog.asStateFlow()
+
+  private val _showWearableDialog = MutableStateFlow(false)
+  val showWearableDialog = _showWearableDialog.asStateFlow()
+
+  private val _showEmailVerifyDialog = MutableStateFlow(false)
+  val showEmailVerifyDialog = _showEmailVerifyDialog.asStateFlow()
+
+  private val _showIdVerifyDialog = MutableStateFlow(false)
+  val showIdVerifyDialog = _showIdVerifyDialog.asStateFlow()
+
+  private val _showLanguageDialog = MutableStateFlow(false)
+  val showLanguageDialog = _showLanguageDialog.asStateFlow()
+
+  private val _leaderboardCity = MutableStateFlow("Bengaluru")
+  val leaderboardCity = _leaderboardCity.asStateFlow()
+
   init {
     viewModelScope.launch {
       repository.initializeSeedData()
     }
+  }
+
+  fun setLeaderboardCity(city: String) {
+    _leaderboardCity.value = city
+  }
+
+  fun showAiAnalysisDialog(show: Boolean) {
+    _showAiAnalysisDialog.value = show
+  }
+
+  fun showWearableDialog(show: Boolean) {
+    _showWearableDialog.value = show
+  }
+
+  fun showEmailVerifyDialog(show: Boolean) {
+    _showEmailVerifyDialog.value = show
+  }
+
+  fun showIdVerifyDialog(show: Boolean) {
+    _showIdVerifyDialog.value = show
+  }
+
+  fun showLanguageDialog(show: Boolean) {
+    _showLanguageDialog.value = show
+  }
+
+  fun setLanguage(langCode: String) {
+    viewModelScope.launch {
+      repository.setLanguage(langCode)
+    }
+  }
+
+  fun syncWearableDevice(deviceName: String = "Fitbit Charge 6") {
+    viewModelScope.launch {
+      repository.syncWearableDevice(deviceName)
+    }
+  }
+
+  fun verifyEmail(email: String) {
+    viewModelScope.launch {
+      repository.verifyEmail(email)
+      _showEmailVerifyDialog.value = false
+    }
+  }
+
+  fun verifyGovtId(idType: String, idNumber: String) {
+    viewModelScope.launch {
+      repository.verifyGovtId(idType, idNumber)
+      _showIdVerifyDialog.value = false
+    }
+  }
+
+  fun getAiHealthReport(): com.example.data.model.AiHealthInsightReport {
+    val profile = userProfile.value
+    val records = medicalRecords.value
+    val donations = bloodDonations.value
+    val lang = profile?.selectedLanguage ?: "en"
+    return com.example.data.remote.AiHealthAnalyzer.analyzeHealthPassport(
+      profile = profile,
+      medicalRecords = records,
+      donations = donations,
+      languageCode = lang
+    )
+  }
+
+  fun getDonorRewards(): com.example.data.model.DonorRewards {
+    val count = bloodDonations.value.size.takeIf { it > 0 } ?: (userProfile.value?.totalDonations ?: 4)
+    return com.example.data.repository.GamificationAndWearableManager.calculateDonorRewards(
+      userProfile = userProfile.value,
+      totalDonationsOverride = count
+    )
+  }
+
+  fun getAllBadges(): List<com.example.data.model.DonorBadge> {
+    val unlocked = userProfile.value?.unlockedBadges ?: "FIRST_DONOR,TRI_HERO,LIFESAVER_PRO"
+    return com.example.data.repository.GamificationAndWearableManager.getAllBadges(unlocked)
+  }
+
+  fun getRegionalLeaderboard(): List<com.example.data.model.LeaderboardDonor> {
+    return com.example.data.repository.GamificationAndWearableManager.getRegionalLeaderboard(
+      userProfile = userProfile.value,
+      selectedCity = _leaderboardCity.value
+    )
+  }
+
+  fun getSupportedWearables(): List<com.example.data.model.WearableDevice> {
+    return com.example.data.repository.GamificationAndWearableManager.getSupportedWearables(
+      connectedDeviceName = userProfile.value?.connectedWearable
+    )
   }
 
   fun setNearbySearchQuery(query: String) {
@@ -381,6 +489,12 @@ class JeevixViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   // Notification actions
+  fun dismissNotification(id: Long) {
+    viewModelScope.launch {
+      repository.markNotificationAsRead(id)
+    }
+  }
+
   fun markNotificationRead(id: Long) {
     viewModelScope.launch {
       repository.markNotificationAsRead(id)

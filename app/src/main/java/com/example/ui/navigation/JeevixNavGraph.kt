@@ -1,5 +1,11 @@
 package com.example.ui.navigation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,7 +46,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -234,12 +242,23 @@ fun MainAppContainer(
 ) {
   var currentTab by remember { mutableStateOf(BottomTab.HOME) }
 
+  val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "nav_sos_pulse")
+  val navSosScale by infiniteTransition.animateFloat(
+    initialValue = 1f,
+    targetValue = 1.08f,
+    animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+      animation = androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+      repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+    ),
+    label = "nav_scale"
+  )
+
   Scaffold(
     bottomBar = {
       Surface(
         modifier = Modifier
           .fillMaxWidth()
-          .shadow(12.dp, spotColor = Color.Black.copy(alpha = 0.08f)),
+          .shadow(16.dp, spotColor = Color.Black.copy(alpha = 0.12f)),
         color = Color.White,
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
       ) {
@@ -247,7 +266,7 @@ fun MainAppContainer(
           containerColor = Color.White,
           tonalElevation = 0.dp,
           modifier = Modifier
-            .height(68.dp)
+            .height(70.dp)
             .navigationBarsPadding()
         ) {
           BottomTab.values().forEach { tab ->
@@ -260,9 +279,10 @@ fun MainAppContainer(
                 icon = {
                   Box(
                     modifier = Modifier
-                      .size(50.dp)
+                      .size(52.dp)
+                      .scale(navSosScale)
                       .clip(CircleShape)
-                      .background(Color(0xFFFFE4E6)) // Rose 100 ring
+                      .background(Color(0xFFFFE4E6))
                       .padding(3.dp),
                     contentAlignment = Alignment.Center
                   ) {
@@ -270,14 +290,18 @@ fun MainAppContainer(
                       modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
-                        .background(Color(0xFFE11D48)), // Rose 600
+                        .background(
+                          brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFFF43F5E), Color(0xFFBE123C))
+                          )
+                        ),
                       contentAlignment = Alignment.Center
                     ) {
                       Text(
                         text = "SOS",
                         color = Color.White,
                         fontWeight = FontWeight.Black,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         letterSpacing = (-0.5).sp
                       )
                     }
@@ -296,21 +320,21 @@ fun MainAppContainer(
                   Icon(
                     imageVector = tab.icon,
                     contentDescription = tab.title,
-                    tint = if (isSelected) Color(0xFFF43F5E) else Color(0xFF94A3B8),
-                    modifier = Modifier.size(22.dp)
+                    tint = if (isSelected) Color(0xFFE11D48) else Color(0xFF94A3B8),
+                    modifier = Modifier.size(23.dp)
                   )
                 },
                 label = {
                   Text(
-                    text = tab.title.uppercase(),
-                    color = if (isSelected) Color(0xFFF43F5E) else Color(0xFF94A3B8),
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                    fontSize = 10.sp,
-                    letterSpacing = 0.4.sp
+                    text = tab.title,
+                    color = if (isSelected) Color(0xFFE11D48) else Color(0xFF64748B),
+                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.2.sp
                   )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                  indicatorColor = Color(0xFFFFE4E6).copy(alpha = 0.4f)
+                  indicatorColor = Color(0xFFFFE4E6).copy(alpha = 0.45f)
                 )
               )
             }

@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/jeevix_app_icon_1787989394137"
+        android:drawable="@drawable/jeevix_app_logo_vector_1788238539465"
         android:gravity="center" />
 </layer-list>

@@ -55,7 +55,7 @@ class JeevixRepository(
     if (existingProfile == null) {
       val defaultProfile = UserProfile(
         id = 1,
-        fullName = "Aanchal",
+        fullName = "Aanchal Singh",
         email = "aanchalbb11@gmail.com",
         phoneNumber = "+91 98765 43210",
         dateOfBirth = "14 Aug 2000",
@@ -69,14 +69,26 @@ class JeevixRepository(
         donorStatus = "Available",
         lastDonationDate = "12 May 2026",
         totalDonations = 4,
-        jeevixId = "JVX-8942-O+",
+        jeevixId = "JVX-8821",
         heartRate = 72,
         systolicBp = 118,
         diastolicBp = 76,
         spo2 = 98,
         isOnboarded = true,
         isProfileComplete = true,
-        isLocationAllowed = true
+        isLocationAllowed = true,
+        gamificationPoints = 1450,
+        donorTier = "Gold Lifesaver",
+        unlockedBadges = "FIRST_DONOR,TRI_HERO,LIFESAVER_PRO,EMERGENCY_CHAMPION,VITALS_GUARDIAN,GOLDEN_VERIFIED",
+        isEmailVerified = true,
+        isIdVerified = true,
+        idType = "Aadhaar Card",
+        idNumberMasked = "XXXX-XXXX-8921",
+        connectedWearable = "Fitbit Charge 6",
+        wearableSyncStatus = "Auto-Synced (5m ago)",
+        dailySteps = 8420,
+        sleepHours = 7.5,
+        selectedLanguage = "en"
       )
       userProfileDao.insertOrUpdateProfile(defaultProfile)
 
@@ -440,23 +452,123 @@ class JeevixRepository(
     val id = bloodDonationDao.insertDonation(donation)
     val current = userProfileDao.getUserProfileOnce()
     if (current != null) {
+      val newPoints = current.gamificationPoints + 250
+      val newCount = current.totalDonations + 1
+      val newTier = when {
+        newPoints >= 3500 -> "Diamond Legend"
+        newPoints >= 2500 -> "Platinum Guardian"
+        newPoints >= 1400 -> "Gold Lifesaver"
+        newPoints >= 800 -> "Silver Protector"
+        else -> "Bronze Donor"
+      }
       userProfileDao.updateProfile(
         current.copy(
-          totalDonations = current.totalDonations + 1,
-          lastDonationDate = donation.date
+          totalDonations = newCount,
+          lastDonationDate = donation.date,
+          gamificationPoints = newPoints,
+          donorTier = newTier
         )
       )
     }
     notificationDao.insertNotification(
       NotificationItem(
         type = "Blood",
-        title = "Donation Recorded ❤️",
-        description = "Your blood donation at ${donation.facilityName} has been logged.",
+        title = "Donation Recorded & +250 XP Earned ❤️",
+        description = "Your blood donation at ${donation.facilityName} has been logged. 250 Lifesaver Points awarded!",
         timeAgo = "Just now",
         urgencyColorHex = 0xFFE11D48
       )
     )
     return id
+  }
+
+  // Wearable Device Sync
+  suspend fun syncWearableDevice(deviceName: String) {
+    val current = userProfileDao.getUserProfileOnce() ?: return
+    // Generate realistic synced vitals
+    val newHr = (68..75).random()
+    val newSys = (116..122).random()
+    val newDia = (74..78).random()
+    val newSpo2 = (98..99).random()
+    val newSteps = current.dailySteps + (120..350).random()
+    val pointsBonus = current.gamificationPoints + 50
+
+    userProfileDao.updateProfile(
+      current.copy(
+        connectedWearable = deviceName,
+        wearableSyncStatus = "Live Synced (Just now)",
+        heartRate = newHr,
+        systolicBp = newSys,
+        diastolicBp = newDia,
+        spo2 = newSpo2,
+        dailySteps = newSteps,
+        gamificationPoints = pointsBonus
+      )
+    )
+
+    notificationDao.insertNotification(
+      NotificationItem(
+        type = "Health",
+        title = "Wearable Health Synced ⌚",
+        description = "Updated real-time telemetry from $deviceName. Resting HR: $newHr BPM, BP: $newSys/$newDia, SpO2: $newSpo2%. (+50 XP)",
+        timeAgo = "Just now",
+        urgencyColorHex = 0xFF0D9488
+      )
+    )
+  }
+
+  // Identity Verification
+  suspend fun verifyEmail(email: String) {
+    val current = userProfileDao.getUserProfileOnce() ?: return
+    userProfileDao.updateProfile(
+      current.copy(
+        email = email,
+        isEmailVerified = true,
+        gamificationPoints = current.gamificationPoints + 100
+      )
+    )
+    notificationDao.insertNotification(
+      NotificationItem(
+        type = "Security",
+        title = "Email Address Verified ✅",
+        description = "Your email ($email) has been verified. +100 Lifesaver Points awarded!",
+        timeAgo = "Just now",
+        urgencyColorHex = 0xFF10B981
+      )
+    )
+  }
+
+  suspend fun verifyGovtId(idType: String, idNumber: String) {
+    val current = userProfileDao.getUserProfileOnce() ?: return
+    val masked = if (idNumber.length > 4) {
+      "XXXX-XXXX-${idNumber.takeLast(4)}"
+    } else {
+      "XXXX-XXXX-4821"
+    }
+    userProfileDao.updateProfile(
+      current.copy(
+        isIdVerified = true,
+        idType = idType,
+        idNumberMasked = masked,
+        gamificationPoints = current.gamificationPoints + 200,
+        unlockedBadges = current.unlockedBadges + ",GOLDEN_VERIFIED"
+      )
+    )
+    notificationDao.insertNotification(
+      NotificationItem(
+        type = "Security",
+        title = "Government ID Verified 🛡️",
+        description = "Verified with $idType ($masked). Golden Verified Donor shield activated! (+200 XP)",
+        timeAgo = "Just now",
+        urgencyColorHex = 0xFF8B5CF6
+      )
+    )
+  }
+
+  // Language preference
+  suspend fun setLanguage(languageCode: String) {
+    val current = userProfileDao.getUserProfileOnce() ?: return
+    userProfileDao.updateProfile(current.copy(selectedLanguage = languageCode))
   }
 
   // Blood Request operations
@@ -501,10 +613,11 @@ class JeevixRepository(
     val records = medicalRecordDao.getAllRecords().firstOrNull() ?: emptyList()
     val contacts = emergencyContactDao.getAllContacts().firstOrNull() ?: emptyList()
     val donations = bloodDonationDao.getAllDonations().firstOrNull() ?: emptyList()
+    val lang = currentProfile?.selectedLanguage ?: "en"
 
     val thinkingMsg = ChatMessage(
       sender = MessageSender.JEEVIX_AI,
-      text = "Analyzing health passport...",
+      text = if (lang == "hi") "हेल्थ पासपोर्ट का विश्लेषण हो रहा है..." else if (lang == "gu") "હેલ્થ પાસપોર્ટ તપાસી રહ્યા છીએ..." else "Analyzing health passport...",
       isThinking = true
     )
     _chatMessages.value = _chatMessages.value + thinkingMsg
@@ -514,7 +627,8 @@ class JeevixRepository(
       profile = currentProfile,
       medicalRecords = records,
       emergencyContacts = contacts,
-      donations = donations
+      donations = donations,
+      languageCode = lang
     )
 
     _chatMessages.value = _chatMessages.value.filterNot { it.isThinking } + ChatMessage(
